@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.sasha.exception.CalculationInputException;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -37,5 +39,23 @@ class TaxBandTest {
                 BigDecimal.valueOf(-10_000L), new BigDecimal("1"),
                 BigDecimal.ZERO, new BigDecimal("2")))));
         assertEquals(new BigDecimal("-10.00"), calc.getEffectiveTaxAmount(BigDecimal.valueOf(-1_000L)));
+    }
+
+    @Test
+    void progressiveScale(){
+        var expected = new ArrayList<Portion>(List.of(
+                new Portion(BigDecimal.valueOf(10_000), BigDecimal.valueOf(1.89)),
+                new Portion(BigDecimal.valueOf(2_256.56), BigDecimal.valueOf(2.5))
+        ));
+        assertEquals(
+                expected,
+                new TaxScaleCalc(TaxScaleConfig.getDefaultConfig()).getProgressiveScaleRates(BigDecimal.valueOf(12_256.56))
+        );
+    }
+
+    @Test
+    void processiveEffectiveRate(){
+        var expected = new BigDecimal("239.00");
+        assertEquals(expected, new TaxScaleCalc(TaxScaleConfig.getDefaultConfig()).getEffectiveProgressiveTaxAmount(BigDecimal.valueOf(12_000)));
     }
 }
