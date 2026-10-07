@@ -1,0 +1,7 @@
+# Tax bands: "from" = lower bound (inclusive), "rate" = tax %
+bands:
+  - { from: 0,      rate: 1.89 }
+  - { from: 10000,  rate: 2.5 }
+  - { from: 20000,  rate: 4.75 }
+  - { from: 50000,  rate: 8.25 }
+  - { from: 100000, rate: 10.5 }
