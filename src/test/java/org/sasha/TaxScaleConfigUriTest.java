@@ -1,5 +1,6 @@
 package org.sasha;
 
+import org.sasha.util.ConfigReader;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
 import org.junit.jupiter.api.AfterAll;
@@ -92,7 +93,7 @@ class TaxScaleConfigUriTest {
 
     @Test
     void loadsYaml() {
-        var scale = TaxScaleConfig.fromURI(URI.create(base + "/bands.yaml")).getScale();
+        var scale = ConfigReader.fromURI(URI.create(base + "/bands.yaml")).getScale();
         assertEquals(2, scale.size());
         assertEquals(new BigDecimal("1.89"), scale.get(BigDecimal.ZERO));
         assertEquals(new BigDecimal("2.5"), scale.get(new BigDecimal("10000")));
@@ -100,29 +101,29 @@ class TaxScaleConfigUriTest {
 
     @Test
     void loadsJson() {
-        var scale = TaxScaleConfig.fromURI(URI.create(base + "/bands.json")).getScale();
+        var scale = ConfigReader.fromURI(URI.create(base + "/bands.json")).getScale();
         assertEquals(new BigDecimal("1.89"), scale.get(BigDecimal.ZERO));
         assertEquals(new BigDecimal("2.5"), scale.get(new BigDecimal("10000")));
     }
 
     @Test
     void rejectsNonHttps() {
-        assertThrows(ConfigLoadException.class, () -> TaxScaleConfig.fromURI(URI.create("http://localhost/bands.yaml")));
+        assertThrows(ConfigLoadException.class, () -> ConfigReader.fromURI(URI.create("http://localhost/bands.yaml")));
     }
 
     @Test
     void rejectsNon200() {
-        assertThrows(ConfigLoadException.class, () -> TaxScaleConfig.fromURI(URI.create(base + "/missing")));
+        assertThrows(ConfigLoadException.class, () -> ConfigReader.fromURI(URI.create(base + "/missing")));
     }
 
     @Test
     void rejectsDocumentWithoutBands() {
-        assertThrows(ConfigLoadException.class, () -> TaxScaleConfig.fromURI(URI.create(base + "/empty")));
+        assertThrows(ConfigLoadException.class, () -> ConfigReader.fromURI(URI.create(base + "/empty")));
     }
 
     @Test
     void rejectsNonNumericRate() {
-        assertThrows(ConfigLoadException.class, () -> TaxScaleConfig.fromURI(URI.create(base + "/bad-rate")));
+        assertThrows(ConfigLoadException.class, () -> ConfigReader.fromURI(URI.create(base + "/bad-rate")));
     }
 
     @Test
@@ -131,6 +132,6 @@ class TaxScaleConfigUriTest {
         try (var socket = new java.net.ServerSocket(0, 0, InetAddress.getLoopbackAddress())) {
             port = socket.getLocalPort();
         }
-        assertThrows(ConfigLoadException.class, () -> TaxScaleConfig.fromURI(URI.create("https://localhost:" + port + "/bands.yaml")));
+        assertThrows(ConfigLoadException.class, () -> ConfigReader.fromURI(URI.create("https://localhost:" + port + "/bands.yaml")));
     }
 }

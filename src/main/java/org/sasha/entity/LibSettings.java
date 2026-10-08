@@ -1,4 +1,4 @@
-package org.sasha;
+package org.sasha.entity;
 
 public record LibSettings(
         boolean enforceTaxRateIncrement

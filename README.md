@@ -4,13 +4,20 @@ Tax calculator library: looks up the tax rate for a salary in a band scale and c
 
 ```java
 // bands: built-in defaults, or load from YAML/JSON (file or https URI)
-TaxScaleConfig config = TaxScaleConfig.fromFile(Path.of("tax_bands.yaml"));
-// TaxScaleConfig.fromURI(URI.create("https://example.com/tax_bands.json"));  // optional 2nd arg: timeout in seconds
+TaxScaleConfig config = ConfigReader.fromFile(Path.of("tax_bands.yaml"));
+// ConfigReader.fromURI(URI.create("https://example.com/tax_bands.json"));  // optional 2nd arg: timeout in seconds
 // TaxScaleConfig.getDefaultConfig();
 
 TaxScaleCalc calc = new TaxScaleCalc(config);
 BigDecimal tax = calc.getEffectiveTaxAmount(new BigDecimal("55000")); // 4537.50
 ```
+
+## Loading tax bands
+
+- defaults now come from resources/default_tax_bands.txt, they are no longer in the code
+- support json and yaml formats
+- support flat file formats, `_` delimiters are allowed
+- files examples are in `docs/`
 
 ## Flat vs progressive
 

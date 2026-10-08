@@ -1,13 +1,16 @@
-package org.sasha;
+package org.sasha.util;
 
-import java.math.BigDecimal;
+import org.sasha.entity.TaxScaleConfig;
+import org.sasha.exception.CalculationInputException;
 import org.sasha.exception.ConfigLoadException;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -16,43 +19,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
+import java.util.stream.Stream;
 
 /**
- * Tax scale configuration
+ * Loads {@link TaxScaleConfig} from files and URIs.
  */
-public class TaxScaleConfig {
-    private final NavigableMap<BigDecimal, BigDecimal> scale;
-
-    // key = band lower bound (inclusive); salaries below the lowest key are rejected
-    private static final NavigableMap<BigDecimal, BigDecimal> defaultScale = Collections.unmodifiableNavigableMap(
-            new TreeMap<BigDecimal, BigDecimal>(Map.of(
-                    BigDecimal.ZERO, new BigDecimal("1.89"),
-                    BigDecimal.valueOf(10_000L), new BigDecimal("2.5"),
-                    BigDecimal.valueOf(20_000), new BigDecimal("4.75"),
-                    BigDecimal.valueOf(50_000), new BigDecimal("8.25"),
-                    BigDecimal.valueOf(100_000), new BigDecimal("10.5")
-            )));
-
-    /**
-     * Constructor with tax bands (floor-based lookups in keys (range) for corresponding tax % amount)
-     * @param scale NavigableMap with bands
-     */
-    public TaxScaleConfig(NavigableMap<BigDecimal, BigDecimal> scale){
-        this.scale = scale;
-    }
-
-    /**
-     * Constructs the instance with default tax bands
-     * @return TaxScaleConfig with default bands
-     */
-    public static TaxScaleConfig getDefaultConfig(){
-        return new TaxScaleConfig(defaultScale);
-    }
+public final class ConfigReader {
+    private ConfigReader(){}
 
     /**
      * Loads tax bands from a YAML or JSON file (JSON is parsed as YAML, so one parser covers both):
@@ -67,6 +45,54 @@ public class TaxScaleConfig {
         } catch (IOException e) {
             throw new ConfigLoadException("cannot load tax bands from " + filePath, e);
         }
+    }
+
+
+    /**
+     * Parses file in line-delimited format key:value\nkey:value
+     * @param path to file
+     * @return tax brackets map
+     */
+    public static TaxScaleConfig fromFlatFile(Path path){
+        try (Stream<String> lines = Files.lines(path)){
+            return parseFlat(lines);
+        } catch (IOException ex){
+            throw new CalculationInputException("cannot parse bands from file %s: %s".formatted(path, ex));
+        }
+    }
+
+    /**
+     * Parses a classpath resource in the same line-delimited format as {@link #fromFlatFile(Path)}
+     * @param name resource name, e.g. "/default_tax_bands.txt"
+     * @return tax brackets map
+     * @throws ConfigLoadException if the resource is missing or unreadable
+     */
+    public static TaxScaleConfig fromFlatResource(String name){
+        try (InputStream in = ConfigReader.class.getResourceAsStream(name)) {
+            if (in == null) {
+                throw new ConfigLoadException("classpath resource not found: " + name);
+            }
+            return parseFlat(new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)).lines());
+        } catch (IOException ex) {
+            throw new ConfigLoadException("cannot read classpath resource " + name, ex);
+        }
+    }
+
+    private static TaxScaleConfig parseFlat(Stream<String> lines){
+        HashMap<BigDecimal, BigDecimal> result = new HashMap<>();
+        lines.filter(l -> !l.isBlank() && !l.stripLeading().startsWith("#")) // blank lines and # comments
+                .map(l -> l.replaceAll("[ _]", ""))//tip and remove _ delimiters
+                .map(l -> l.split(":", 2))
+                .filter(p -> p.length == 2)
+                .forEach(p -> result.put(
+                        new BigDecimal(p[0]),
+                        new BigDecimal(p[1])
+                ));
+        return new TaxScaleConfig(new TreeMap<>(result));
+    }
+
+    public static TaxScaleConfig fromFlatFile(String pathStr){
+        return fromFlatFile(Path.of(pathStr));
     }
 
     /**
@@ -99,7 +125,7 @@ public class TaxScaleConfig {
     }
 
     public static TaxScaleConfig fromURI(URI uri){
-        return TaxScaleConfig.fromURI(uri, 2);
+        return fromURI(uri, 2);
     }
 
     private static TaxScaleConfig parse(Reader reader, String source){
@@ -119,13 +145,5 @@ public class TaxScaleConfig {
         } catch (RuntimeException e) {
             throw new ConfigLoadException("invalid tax bands in " + source, e);
         }
-    }
-
-    /**
-     * Getter for tax bands config
-     * @return NavigableMap with tax bands
-     */
-    public NavigableMap<BigDecimal, BigDecimal> getScale(){
-        return scale;
     }
 }

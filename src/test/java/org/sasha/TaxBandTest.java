@@ -1,9 +1,15 @@
 package org.sasha;
 
+import org.sasha.entity.Portion;
+import org.sasha.entity.TaxScaleConfig;
+import org.sasha.util.ConfigReader;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.sasha.exception.CalculationInputException;
 
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -57,5 +63,28 @@ class TaxBandTest {
     void processiveEffectiveRate(){
         var expected = new BigDecimal("239.00");
         assertEquals(expected, new TaxScaleCalc(TaxScaleConfig.getDefaultConfig()).getEffectiveProgressiveTaxAmount(BigDecimal.valueOf(12_000)));
+    }
+
+    @Test
+    void readFlatFile(){
+        assertDoesNotThrow(()->{
+            ConfigReader.fromFlatFile(Path.of("c:/projects/calc/docs/tax_bands.txt"));
+        });
+    }
+
+    @Test
+    void readFlatFileDirect(){
+        assertDoesNotThrow(()->{
+            ConfigReader.fromFlatFile("c:/projects/calc/docs/tax_bands.txt");
+        });
+    }
+
+
+
+    @Test
+    void flatFileSkipsCommentsAndBlankLines(@TempDir Path dir) throws Exception {
+        var file = Files.writeString(dir.resolve("bands.txt"), "# note: rates in %\n\n0: 1\n  # indented: comment\n10_000: 2\n");
+        var scale = ConfigReader.fromFlatFile(file).getScale();
+        assertEquals(Map.of(BigDecimal.ZERO, new BigDecimal("1"), new BigDecimal("10000"), new BigDecimal("2")), scale);
     }
 }

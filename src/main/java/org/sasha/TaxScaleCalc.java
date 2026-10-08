@@ -1,5 +1,8 @@
 package org.sasha;
 
+import org.sasha.entity.LibSettings;
+import org.sasha.entity.Portion;
+import org.sasha.entity.TaxScaleConfig;
 import org.sasha.exception.CalculationInputException;
 
 import java.math.BigDecimal;
@@ -13,7 +16,7 @@ import java.util.Map;
  */
 public class TaxScaleCalc {
     private final TaxScaleConfig config;
-    private static final LibSettings  defaultLibSettings = new LibSettings(true);
+    private static final LibSettings defaultLibSettings = new LibSettings(true);
 
     public TaxScaleCalc(TaxScaleConfig config){
         this(config, defaultLibSettings);
@@ -88,5 +91,17 @@ public class TaxScaleCalc {
             portions.add(new Portion(top.subtract(lower), e.getValue()));
         }
         return portions;
+    }
+
+    public List<Portion> getProcessiveScaleRatesOpt(BigDecimal salary){
+        return config.getScale().entrySet().stream()
+                .map(e -> {
+                    var lower = e.getKey();
+                    var upper = config.getScale().higherKey(lower);
+                    var top = upper == null ? salary : salary.min(upper);
+                    return new Portion(top.subtract(lower), e.getValue());
+                })
+                .filter(p->p.amount().signum() > 0)
+                .toList();
     }
 }

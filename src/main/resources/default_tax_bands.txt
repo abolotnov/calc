@@ -1,0 +1,6 @@
+# key = band lower bound (inclusive), value = tax %
+0: 1.89
+10_000: 2.5
+20_000: 4.75
+50_000: 8.25
+100_000: 10.5
